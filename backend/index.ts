@@ -12,7 +12,22 @@ mongodbConnect();
 
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ limit: "50mb", extended: true }));
-app.use(cors());
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      if (!origin || origin.endsWith(".vercel.app") || origin === "http://localhost:3000") {
+        callback(null, true);
+      } else {
+        callback(new Error("CORS not allowed"));
+      }
+    },
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE"],
+  })
+);
+
+app.options("*", cors()); // handle preflight
+
 
 app.get("/", (req: Request, res: Response) => {
   res.json({

@@ -11,50 +11,74 @@ config();
 
 const app: Application = express();
 
-// Enhanced CORS configuration with dynamic origin handling
-const corsOptions = {
-  origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
-    // Allow requests with no origin (like mobile apps or curl requests)
+// Comprehensive CORS setup for Vercel
+const allowedOrigins = [
+  /^https:\/\/ai-based-learning-platform-[a-z0-9]+\.vercel\.app$/,
+  /^http:\/\/localhost:\d+$/,
+  /^https:\/\/localhost:\d+$/,
+];
+
+// Primary CORS configuration
+app.use(cors({
+  origin: (origin, callback) => {
+    // Allow requests with no origin (mobile apps, Postman, etc.)
     if (!origin) return callback(null, true);
     
-    // Define allowed origins patterns
-    const allowedOrigins = [
-      /^https:\/\/ai-based-learning-platform-.*\.vercel\.app$/,
-      /^http:\/\/localhost:\d+$/,
-      /^https:\/\/.*\.vercel\.app$/, // Allow any vercel app if needed
-    ];
-    
-    // Check if origin matches any allowed pattern
+    // Check if origin matches allowed patterns
     const isAllowed = allowedOrigins.some(pattern => pattern.test(origin));
     
     if (isAllowed) {
       callback(null, true);
     } else {
-      console.log(`CORS blocked origin: ${origin}`);
-      callback(new Error('Not allowed by CORS'));
+      console.log(`CORS rejected origin: ${origin}`);
+      callback(null, false); // Don't throw error, just reject
     }
   },
-  methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: [
-    "Content-Type",
-    "Authorization",
-    "X-Requested-With",
-    "Accept",
-    "Origin"
+    'Origin',
+    'X-Requested-With',
+    'Content-Type',
+    'Accept',
+    'Authorization',
+    'Cache-Control',
+    'X-HTTP-Method-Override'
   ],
   credentials: true,
-  optionsSuccessStatus: 200 // For legacy browser support
-};
+  preflightContinue: false,
+  optionsSuccessStatus: 204
+}));
 
-app.use(cors(corsOptions));
-
-// Handle preflight requests explicitly
-app.options("*", cors(corsOptions));
+// Additional CORS middleware for extra reliability
+app.use((req: Request, res: Response, next) => {
+  const origin = req.headers.origin;
+  
+  // Set CORS headers manually as backup
+  if (origin) {
+    const isVercelApp = /^https:\/\/ai-based-learning-platform-[a-z0-9]+\.vercel\.app$/.test(origin);
+    const isLocalhost = /^https?:\/\/localhost:\d+$/.test(origin);
+    
+    if (isVercelApp || isLocalhost) {
+      res.setHeader('Access-Control-Allow-Origin', origin);
+      res.setHeader('Access-Control-Allow-Credentials', 'true');
+      res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
+      res.setHeader('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization, Cache-Control, X-HTTP-Method-Override');
+    }
+  }
+  
+  // Handle preflight requests
+  if (req.method === 'OPTIONS') {
+    res.status(204).send();
+    return;
+  }
+  
+  next();
+});
 
 // Connect to MongoDB
 mongodbConnect();
 
-// Body parsing middleware
+// Body parsing middleware (after CORS)
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
@@ -63,26 +87,55 @@ app.get("/", (req: Request, res: Response) => {
   res.json({
     message: "API Working",
     timestamp: new Date().toISOString(),
+    cors: "enabled"
   });
 });
 
-// Route handlers
+// Add a specific CORS test endpoint
+app.get("/cors-test", (req: Request, res: Response) => {
+  res.json({
+    message: "CORS test successful",
+    origin: req.headers.origin,
+    timestamp: new Date().toISOString()
+  });
+});
+
+// Debug middleware to log all requests
+app.use((req: Request, res: Response, next) => {
+  console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
+  console.log('Headers:', req.headers);
+  next();
+});
+
+// Route handlers with debugging
+console.log('Registering routers...');
 app.use("/users", userRouter);
+console.log('Math router being registered...');
 app.use("/math", mathRouter);
 app.use("/stories", storyRouter);
+console.log('All routers registered.');
 
 // 404 handler for unmatched routes
 app.use("*", (req: Request, res: Response) => {
   res.status(404).json({
     error: "Route not found",
     path: req.originalUrl,
-    method: req.method
+    method: req.method,
+    availableRoutes: ["/", "/cors-test", "/users", "/math", "/stories"]
   });
 });
 
-// Error handling middleware
+// Global error handling middleware
 app.use((err: any, req: Request, res: Response, next: any) => {
-  console.error("Error:", err);
+  console.error("Server Error:", err);
+  
+  // Set CORS headers even for errors
+  const origin = req.headers.origin;
+  if (origin && /vercel\.app$/.test(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+  }
+  
   res.status(500).json({
     error: "Internal server error",
     message: process.env.NODE_ENV === "development" ? err.message : "Something went wrong"
@@ -92,6 +145,7 @@ app.use((err: any, req: Request, res: Response, next: any) => {
 const PORT = process.env.PORT || 8000;
 
 app.listen(PORT, () => {
-  console.log(`Server is up and running on port ${PORT}`);
-  console.log(`Environment: ${process.env.NODE_ENV || "development"}`);
+  console.log(`🚀 Server running on port ${PORT}`);
+  console.log(`📍 Environment: ${process.env.NODE_ENV || "development"}`);
+  console.log(`🌐 CORS enabled for Vercel apps`);
 });

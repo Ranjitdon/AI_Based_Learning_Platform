@@ -11,18 +11,28 @@ const app: Application = express();
 // Connect to MongoDB
 mongodbConnect();
 
-// CORS Configuration
-const allowedOrigins = [
-  "https://ai-based-learning-platform-qfuc.vercel.app", // frontend on vercel
-  "http://localhost:3000", // local dev
-];
-
-app.use(cors({
-  origin: allowedOrigins,
+// CORS Configuration: Allow any *.vercel.app + localhost for dev
+const corsOptions = {
+  origin: (origin: string | undefined, callback: Function) => {
+    if (
+      !origin ||
+      origin.includes("localhost") ||
+      /\.vercel\.app$/.test(new URL(origin).hostname)
+    ) {
+      callback(null, true);
+    } else {
+      callback(new Error("Not allowed by CORS"));
+    }
+  },
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],
   credentials: true,
-}));
+};
+
+app.use(cors(corsOptions));
+
+// Handle preflight requests
+app.options("*", cors(corsOptions));
 
 // Body parsing middleware
 app.use(express.json({ limit: "50mb" }));

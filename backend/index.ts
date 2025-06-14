@@ -13,7 +13,8 @@ const app: Application = express();
 
 // Comprehensive CORS setup for Vercel
 const allowedOrigins = [
-  /^https:\/\/ai-based-learning-platform-[a-z0-9]+\.vercel\.app$/,
+  /^https:\/\/ai-based-learning-platform.*\.vercel\.app$/,
+  /^https:\/\/ai-based-learning-platform\.vercel\.app$/,
   /^http:\/\/localhost:\d+$/,
   /^https:\/\/localhost:\d+$/,
 ];

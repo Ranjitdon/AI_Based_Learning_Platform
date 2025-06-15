@@ -16,9 +16,6 @@ app.use(cors({
   origin: "https://ai-based-learning-platform-r7k4.vercel.app"
 }));
 
-app.options("*", cors()); // handle preflight
-
-
 app.get("/", (req: Request, res: Response) => {
   res.json({
     message: "API Working",

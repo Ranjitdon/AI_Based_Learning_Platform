@@ -11,7 +11,7 @@ interface StoryGenerationResponse {
 export const generateStoryWithGemini = async (prompt: string): Promise<StoryGenerationResponse> => {
   try {
     // Call the Flask backend API that integrates with Google Gemini
-    const response = await axios.post(`${'http://127.0.0.1:5000'}/generate_story`, {
+    const response = await axios.post(`${'https://ai-based-learning-platform-backend.onrender.com'}/generate_story`, {
       input: prompt,
     });
     

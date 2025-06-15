@@ -8,16 +8,16 @@ import storyRouter from "./src/routers/storyRouter";
 
 const app: Application = express();
 
-mongodbConnect();
 
-app.use(express.json({ limit: "50mb" }));
-app.use(express.urlencoded({ limit: "50mb", extended: true }));
 app.use(cors({
   origin: "https://ai-based-learning-platform-r7k4.vercel.app",
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   credentials: false  // Since you're NOT using cookies or login here
 }));
+app.use(express.json({ limit: "50mb" }));
+app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
+mongodbConnect();
 
 app.get("/", (req: Request, res: Response) => {
   res.json({
